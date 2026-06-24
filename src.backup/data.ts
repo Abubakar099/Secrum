@@ -32,7 +32,7 @@ export const PRODUCTS: Product[] = [
     tagline: 'Rich Moisture-Lock Barrier Cream',
     price: 72,
     category: 'moisturizers',
-    image: 'https://images.unsplash.com/photo-1608248597481-496100c8c836?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=80&w=800',
     description: 'A botanical lipid matrix that mirrors the skin’s natural sebum. Combining ultra-lightweight sugarcane squalane with purifying alpine eucalyptus oil, it calms redness, purges environmental residue, and refines uneven textures.',
     ingredients: [
       'Sugarcane Squalane (99% pure)',
