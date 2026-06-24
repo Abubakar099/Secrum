@@ -30,6 +30,11 @@ export function ProductCard({ product }: ProductCardProps) {
   const badgeText =
     product.id === "secrum-01" ? "NEW" : product.id === "secrum-03" ? "BESTSELLER" : null
 
+  // Check if product has sale/discount status
+  const hasSale = (product as any).hasDiscount === true
+  const salePrice = (product as any).salePrice
+  const originalPrice = (product as any).originalPrice
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -84,6 +89,15 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="absolute top-3 left-3">
             <span className="text-[8px] font-sans font-bold tracking-[0.2em] bg-[#222222]/90 backdrop-blur-xs text-[#f5f5f0] py-1 px-2.5 uppercase rounded-xs shadow-xs">
               {badgeText}
+            </span>
+          </div>
+        )}
+
+        {/* SALE badge overlay */}
+        {hasSale && (
+          <div className="absolute top-3 right-3">
+            <span className="text-[8px] font-sans font-bold tracking-[0.2em] bg-[#d946a6]/90 backdrop-blur-xs text-[#f5f5f0] py-1 px-2.5 uppercase rounded-xs shadow-xs">
+              Sale
             </span>
           </div>
         )}
@@ -146,12 +160,22 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         {/* Footer: price and CTA */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-[#e8e2d9]/50">
-          <span className="font-sans text-[13px] font-medium text-[#222222]">${product.price}.00</span>
+        <div className="flex flex-col gap-3 mt-auto pt-3 border-t border-[#e8e2d9]/50">
+          {/* Pricing Section */}
+          {hasSale ? (
+            <div className="flex items-center gap-2">
+              <span className="font-sans text-[13px] font-bold text-[#d946a6]">{salePrice}</span>
+              <span className="font-sans text-[11px] text-[#8c8c88] line-through">{originalPrice}</span>
+            </div>
+          ) : (
+            <span className="font-sans text-[13px] font-medium text-[#222222]">
+              {salePrice || `Rs.${(product.price * 100).toLocaleString('en-PK')}.00 PKR`}
+            </span>
+          )}
 
           <button
             onClick={() => addToCart(product, 1)}
-            className="text-[9px] font-sans font-bold tracking-[0.12em] text-[#222222] hover:text-[#4a4a4a] flex items-center space-x-1 uppercase focus:outline-none cursor-pointer group/btn"
+            className="text-[9px] font-sans font-bold tracking-[0.12em] text-[#222222] hover:text-[#4a4a4a] flex items-center justify-center space-x-1 uppercase focus:outline-none cursor-pointer group/btn"
           >
             <span>ADD TO BAG</span>
             <span className="transform group-hover/btn:translate-x-0.5 transition-transform duration-300">→</span>
