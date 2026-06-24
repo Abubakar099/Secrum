@@ -6,6 +6,7 @@ import Image from "next/image"
 import { ChevronUp, ArrowRight } from "lucide-react"
 import { motion } from "motion/react"
 import { ProductCard } from "@/components/product/product-card"
+import { HeroCarousel } from "@/components/hero/hero-carousel"
 import { useUIStore } from "@/store/ui-store"
 import { useShopStore } from "@/store/shop-store"
 import { PRODUCTS, NEW_ARRIVALS, BEST_DEALS, TESTIMONIALS, FAQS } from "@/lib/data"
@@ -86,58 +87,8 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 md:px-12 py-16 md:py-24">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-left"
-          >
-            <p className="font-mono text-[9px] tracking-[0.25em] text-[#4a4a4a] uppercase mb-4">
-              BOTANICAL APOTHECARY
-            </p>
-            <h1 className="font-serif text-4xl md:text-6xl font-normal text-[#222222] mb-6 tracking-wide">
-              Quiet Luxury Skincare
-            </h1>
-            <p className="text-sm md:text-base text-[#4a4a4a] leading-relaxed mb-8 max-w-md">
-              Secrum distills bio-active nutrients from glacier-grown alpine flora and fjord-drawn marine silts,
-              sealed in photoprotective twilight violet glass. Rejecting fast chemical noise since 2021.
-            </p>
-            <div className="flex space-x-4">
-              <Link
-                href="/shop"
-                className="inline-block bg-[#222222] hover:bg-[#4a4a4a] text-[#f5f5f0] px-8 py-3 rounded-sm text-xs font-semibold tracking-[0.15em] uppercase transition-all duration-300 cursor-pointer"
-              >
-                Explore Collection
-              </Link>
-              <button
-                onClick={openQuizModal}
-                className="inline-block border border-[#222222] text-[#222222] hover:bg-[#e8e2d9]/50 px-8 py-3 rounded-sm text-xs font-semibold tracking-[0.15em] uppercase transition-all duration-300 cursor-pointer"
-              >
-                Take Quiz
-              </button>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative aspect-[4/5] overflow-hidden rounded-lg"
-          >
-            <Image
-              src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&q=80&w=600"
-              alt="Featured product"
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover object-center"
-              priority
-            />
-          </motion.div>
-        </div>
-      </section>
+      {/* Hero Carousel Section */}
+      <HeroCarousel />
 
       {/* Featured Products */}
       <section className="bg-[#e8e2d9]/25 py-16 md:py-24">

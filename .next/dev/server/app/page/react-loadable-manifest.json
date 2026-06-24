@@ -4,7 +4,7 @@
     "files": [
       "static/chunks/components_cart_cart-drawer_tsx_1bds5mj._.js",
       "static/chunks/node_modules__pnpm_17glh2u._.js",
-      "static/chunks/components_cart_cart-drawer_tsx_1r3sa_g._.js"
+      "static/chunks/components_cart_cart-drawer_tsx_03ewat5._.js"
     ]
   },
   "[project]/components/modals/product-detail-modal.tsx [app-client] (ecmascript, next/dynamic entry)": {
@@ -12,14 +12,14 @@
     "files": [
       "static/chunks/node_modules__pnpm_1usmguh._.js",
       "static/chunks/components_modals_product-detail-modal_tsx_1cfsaqc._.js",
-      "static/chunks/components_modals_product-detail-modal_tsx_1r3sa_g._.js"
+      "static/chunks/components_modals_product-detail-modal_tsx_03ewat5._.js"
     ]
   },
   "[project]/components/modals/apothecary-quiz.tsx [app-client] (ecmascript, next/dynamic entry)": {
     "id": "[project]/components/modals/apothecary-quiz.tsx [app-client] (ecmascript, next/dynamic entry)",
     "files": [
       "static/chunks/_1hqwif4._.js",
-      "static/chunks/components_modals_apothecary-quiz_tsx_1r3sa_g._.js"
+      "static/chunks/components_modals_apothecary-quiz_tsx_03ewat5._.js"
     ]
   }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ShoppingBag, Menu, X, ArrowRight, Heart } from "lucide-react"
+import { ShoppingBag, Menu, X, ArrowRight, Heart, User } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useCartStore } from "@/store/cart-store"
 import { useUIStore } from "@/store/ui-store"
@@ -86,6 +86,15 @@ export function Header() {
 
           {/* Utility Tools */}
           <div className="flex items-center space-x-5">
+            {/* Profile Link */}
+            <Link
+              href="/profile"
+              className="p-2.5 rounded-full border border-transparent hover:border-[#e8e2d9] bg-transparent hover:bg-[#e8e2d9]/40 transition-all duration-300 cursor-pointer text-[#222222]"
+              aria-label="Go to profile"
+            >
+              <User className="w-4 h-4 stroke-[1.8]" />
+            </Link>
+
             {/* Soft Favorite Quick Status */}
             <div className="hidden sm:flex items-center text-xs tracking-widest text-[#4a4a4a]">
               <Heart className="w-3.5 h-3.5 text-[#4a4a4a] mr-1.5" />
