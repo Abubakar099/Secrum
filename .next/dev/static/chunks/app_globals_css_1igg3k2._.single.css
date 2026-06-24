@@ -130,17 +130,17 @@
 
   @supports (color: lab(0% 0 0)) {
     :root, :host {
-      --color-red-400: lab(63.7053% 60.7449 31.3109);
+      --color-red-400: lab(63.7053% 60.745 31.3109);
       --color-red-500: lab(55.4814% 75.0732 48.8528);
-      --color-amber-800: lab(37.8823% 37.1699 52.2718);
+      --color-amber-800: lab(37.8822% 37.1699 52.2718);
       --color-yellow-400: lab(83.2664% 8.65132 106.895);
       --color-green-600: lab(59.0978% -58.6621 41.2579);
       --color-emerald-600: lab(55.0481% -49.9246 15.93);
       --color-emerald-700: lab(44.4871% -41.0396 11.0361);
       --color-emerald-800: lab(35.3675% -33.1188 8.04002);
-      --color-gray-200: lab(91.6229% -.159085 -2.26791);
+      --color-gray-200: lab(91.6229% -.159115 -2.26791);
       --color-gray-300: lab(85.1236% -.612259 -3.7138);
-      --color-gray-500: lab(47.7841% -.393212 -10.0268);
+      --color-gray-500: lab(47.7841% -.393182 -10.0268);
     }
   }
 }
@@ -1229,27 +1229,27 @@
 
   .border-\[\#e8e2d9\]\/25 {
     border-color: #e8e2d940;
-    border-color: lab(90.1748% .956088 5.17337 / .25);
+    border-color: lab(90.1748% .956118 5.17331 / .25);
   }
 
   .border-\[\#e8e2d9\]\/40 {
     border-color: #e8e2d966;
-    border-color: lab(90.1748% .956088 5.17337 / .4);
+    border-color: lab(90.1748% .956118 5.17331 / .4);
   }
 
   .border-\[\#e8e2d9\]\/50 {
     border-color: #e8e2d980;
-    border-color: lab(90.1748% .956088 5.17337 / .5);
+    border-color: lab(90.1748% .956118 5.17331 / .5);
   }
 
   .border-\[\#e8e2d9\]\/60 {
     border-color: #e8e2d999;
-    border-color: lab(90.1748% .956088 5.17337 / .6);
+    border-color: lab(90.1748% .956059 5.17334 / .6);
   }
 
   .border-\[\#e8e2d9\]\/80 {
     border-color: #e8e2d9cc;
-    border-color: lab(90.1748% .956088 5.17337 / .8);
+    border-color: lab(90.1748% .956118 5.17331 / .8);
   }
 
   .border-\[\#f5f5f0\] {
@@ -1298,42 +1298,42 @@
 
   .bg-\[\#e8e2d9\]\/10 {
     background-color: #e8e2d91a;
-    background-color: lab(90.1748% .956088 5.17337 / .1);
+    background-color: lab(90.1748% .956118 5.17331 / .1);
   }
 
   .bg-\[\#e8e2d9\]\/15 {
     background-color: #e8e2d926;
-    background-color: lab(90.1748% .956088 5.17337 / .15);
+    background-color: lab(90.1748% .956059 5.17334 / .15);
   }
 
   .bg-\[\#e8e2d9\]\/20 {
     background-color: #e8e2d933;
-    background-color: lab(90.1748% .956088 5.17337 / .2);
+    background-color: lab(90.1748% .956118 5.17331 / .2);
   }
 
   .bg-\[\#e8e2d9\]\/25 {
     background-color: #e8e2d940;
-    background-color: lab(90.1748% .956088 5.17337 / .25);
+    background-color: lab(90.1748% .956118 5.17331 / .25);
   }
 
   .bg-\[\#e8e2d9\]\/35 {
     background-color: #e8e2d959;
-    background-color: lab(90.1748% .956088 5.17337 / .35);
+    background-color: lab(90.1748% .956118 5.17331 / .35);
   }
 
   .bg-\[\#e8e2d9\]\/40 {
     background-color: #e8e2d966;
-    background-color: lab(90.1748% .956088 5.17337 / .4);
+    background-color: lab(90.1748% .956118 5.17331 / .4);
   }
 
   .bg-\[\#e8e2d9\]\/45 {
     background-color: #e8e2d973;
-    background-color: lab(90.1748% .956088 5.17337 / .45);
+    background-color: lab(90.1748% .956118 5.17331 / .45);
   }
 
   .bg-\[\#e8e2d9\]\/50 {
     background-color: #e8e2d980;
-    background-color: lab(90.1748% .956088 5.17337 / .5);
+    background-color: lab(90.1748% .956118 5.17331 / .5);
   }
 
   .bg-\[\#f5f5f0\] {
@@ -1342,17 +1342,17 @@
 
   .bg-\[\#f5f5f0\]\/50 {
     background-color: #f5f5f080;
-    background-color: lab(96.4335% -.650495 2.41337 / .5);
+    background-color: lab(96.4335% -.650555 2.41338 / .5);
   }
 
   .bg-\[\#f5f5f0\]\/80 {
     background-color: #f5f5f0cc;
-    background-color: lab(96.4335% -.650495 2.41337 / .8);
+    background-color: lab(96.4335% -.650555 2.41338 / .8);
   }
 
   .bg-\[\#f5f5f0\]\/95 {
     background-color: #f5f5f0f2;
-    background-color: lab(96.4335% -.650495 2.41337 / .95);
+    background-color: lab(96.4335% -.650555 2.41338 / .95);
   }
 
   .bg-emerald-800 {
@@ -1845,7 +1845,7 @@
 
   .text-\[\#f5f5f0\]\/90 {
     color: #f5f5f0e6;
-    color: lab(96.4335% -.650495 2.41337 / .9);
+    color: lab(96.4335% -.650555 2.41338 / .9);
   }
 
   .text-\[\#ffc107\] {
@@ -1924,7 +1924,7 @@
 
   .placeholder-\[\#f5f5f0\]\/40::placeholder {
     color: #f5f5f066;
-    color: lab(96.4335% -.650495 2.41337 / .4);
+    color: lab(96.4335% -.650555 2.41338 / .4);
   }
 
   .accent-\[\#222222\] {
@@ -2106,7 +2106,7 @@
   @media (hover: hover) {
     .group-hover\:text-\[\#f5f5f0\]\/80:is(:where(.group):hover *) {
       color: #f5f5f0cc;
-      color: lab(96.4335% -.650495 2.41337 / .8);
+      color: lab(96.4335% -.650555 2.41338 / .8);
     }
   }
 
@@ -2144,7 +2144,7 @@
   @media (hover: hover) {
     .hover\:border-\[\#e8e2d9\]\/40:hover {
       border-color: #e8e2d966;
-      border-color: lab(90.1748% .956088 5.17337 / .4);
+      border-color: lab(90.1748% .956118 5.17331 / .4);
     }
   }
 
@@ -2176,42 +2176,42 @@
   @media (hover: hover) {
     .hover\:bg-\[\#e8e2d9\]\/10:hover {
       background-color: #e8e2d91a;
-      background-color: lab(90.1748% .956088 5.17337 / .1);
+      background-color: lab(90.1748% .956118 5.17331 / .1);
     }
   }
 
   @media (hover: hover) {
     .hover\:bg-\[\#e8e2d9\]\/20:hover {
       background-color: #e8e2d933;
-      background-color: lab(90.1748% .956088 5.17337 / .2);
+      background-color: lab(90.1748% .956118 5.17331 / .2);
     }
   }
 
   @media (hover: hover) {
     .hover\:bg-\[\#e8e2d9\]\/40:hover {
       background-color: #e8e2d966;
-      background-color: lab(90.1748% .956088 5.17337 / .4);
+      background-color: lab(90.1748% .956118 5.17331 / .4);
     }
   }
 
   @media (hover: hover) {
     .hover\:bg-\[\#e8e2d9\]\/50:hover {
       background-color: #e8e2d980;
-      background-color: lab(90.1748% .956088 5.17337 / .5);
+      background-color: lab(90.1748% .956118 5.17331 / .5);
     }
   }
 
   @media (hover: hover) {
     .hover\:bg-\[\#e8e2d9\]\/60:hover {
       background-color: #e8e2d999;
-      background-color: lab(90.1748% .956088 5.17337 / .6);
+      background-color: lab(90.1748% .956059 5.17334 / .6);
     }
   }
 
   @media (hover: hover) {
     .hover\:bg-\[\#e8e2d9\]\/75:hover {
       background-color: #e8e2d9bf;
-      background-color: lab(90.1748% .956088 5.17337 / .75);
+      background-color: lab(90.1748% .956118 5.17331 / .75);
     }
   }
 

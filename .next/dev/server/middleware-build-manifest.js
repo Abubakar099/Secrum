@@ -4,7 +4,7 @@ globalThis.__BUILD_MANIFEST = {
   },
   "devFiles": [],
   "polyfillFiles": [
-    "static/chunks/node_modules_next_dist_build_polyfills_polyfill-nomodule.js"
+    "static/chunks/0ly8_next_dist_build_polyfills_polyfill-nomodule.js"
   ],
   "lowPriorityFiles": [
     "static/development/_buildManifest.js",
@@ -12,15 +12,17 @@ globalThis.__BUILD_MANIFEST = {
     "static/development/_clientMiddlewareManifest.js"
   ],
   "rootMainFiles": [
-    "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_1xx01vv._.js",
-    "static/chunks/node_modules_next_dist_compiled_next-devtools_index_090k2jm.js",
-    "static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js",
-    "static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js",
-    "static/chunks/node_modules_next_dist_compiled_1amofcm._.js",
-    "static/chunks/node_modules_next_dist_client_0r5nbpw._.js",
-    "static/chunks/node_modules_next_dist_1ybzpk2._.js",
-    "static/chunks/node_modules_@swc_helpers_cjs_1r9vbqw._.js",
+    "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_0b99uwa._.js",
+    "static/chunks/0ly8_next_dist_compiled_next-devtools_index_0yu6noi.js",
+    "static/chunks/193b_dist_compiled_react-dom-experimental_cjs_react-dom-client_development_19pc9_7.js",
+    "static/chunks/0ly8_next_dist_compiled_react-dom-experimental_cjs_react-dom_development_09ghs13.js",
+    "static/chunks/0ly8_next_dist_compiled_react-dom-experimental_03v5iaj._.js",
+    "static/chunks/0ly8_next_dist_compiled_react-server-dom-turbopack-experimental_1sr4ges._.js",
+    "static/chunks/0ly8_next_dist_compiled_20xnuxw._.js",
+    "static/chunks/0ly8_next_dist_client_1ri-qb-._.js",
+    "static/chunks/0ly8_next_dist_1tgaskt._.js",
+    "static/chunks/0vvp_@swc_helpers_cjs_0vb02wp._.js",
     "static/chunks/_1anvha4._.js",
-    "static/chunks/turbopack-_01_ro95._.js"
+    "static/chunks/turbopack-_16nuzrd._.js"
   ]
 };
