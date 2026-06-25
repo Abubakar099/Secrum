@@ -1,0 +1,6 @@
+{
+  "name": "Secrum",
+  "description": "A premium, minimalist quiet luxury apothecary and skincare experience focusing on editorial elegance and efficacy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
