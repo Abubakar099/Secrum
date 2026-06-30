@@ -21,3 +21,10 @@ View your app in AI Studio: https://ai.studio/apps/ca830a75-2280-4a02-b408-b2a66
 
 
 // "dev": "next dev --port 3000 --hostname 0.0.0.0",
+
+
+@supabase/ssr is the updated, official helper library built by Supabase. It replaces the older, deprecated framework-specific packages like @supabase/auth-helpers-nextjs.
+npm install prisma @prisma/client
+npm install react-hook-form @hookform/resolvers
+
+

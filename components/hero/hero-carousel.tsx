@@ -15,6 +15,7 @@ const HERO_IMAGES = [
     id: 2,
     url: "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?auto=format&fit=crop&q=80&w=1920&h=1080",
     alt: "Premium skincare hero image 2",
+    quality: 75
   },
   {
     id: 3,
