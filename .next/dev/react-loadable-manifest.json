@@ -1,26 +1,20 @@
 {
-  "components\\layout\\overlays.tsx -> @/components/cart/cart-drawer": {
-    "id": "components\\layout\\overlays.tsx -> @/components/cart/cart-drawer",
+  "components/layout/overlays.tsx -> @/components/cart/cart-drawer": {
+    "id": "components/layout/overlays.tsx -> @/components/cart/cart-drawer",
     "files": [
       "static/chunks/_app-pages-browser_components_cart_cart-drawer_tsx.js"
     ]
   },
-  "components\\layout\\overlays.tsx -> @/components/modals/apothecary-quiz": {
-    "id": "components\\layout\\overlays.tsx -> @/components/modals/apothecary-quiz",
+  "components/layout/overlays.tsx -> @/components/modals/apothecary-quiz": {
+    "id": "components/layout/overlays.tsx -> @/components/modals/apothecary-quiz",
     "files": [
       "static/chunks/_app-pages-browser_components_modals_apothecary-quiz_tsx.js"
     ]
   },
-  "components\\layout\\overlays.tsx -> @/components/modals/product-detail-modal": {
-    "id": "components\\layout\\overlays.tsx -> @/components/modals/product-detail-modal",
+  "components/layout/overlays.tsx -> @/components/modals/product-detail-modal": {
+    "id": "components/layout/overlays.tsx -> @/components/modals/product-detail-modal",
     "files": [
       "static/chunks/_app-pages-browser_components_modals_product-detail-modal_tsx.js"
-    ]
-  },
-  "node_modules\\next\\dist\\client\\dev\\hot-reloader\\app\\web-socket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
-    "id": "node_modules\\next\\dist\\client\\dev\\hot-reloader\\app\\web-socket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
-    "files": [
-      "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
     ]
   }
 }
