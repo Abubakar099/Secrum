@@ -1,23 +1,41 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { decodeToken } from '@/lib/auth/jwt'
+import prisma from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const { data: wishlist, error } = await supabase
-      .from('wishlist')
-      .select('id, products(*)')
-      .eq('user_id', user.id)
+    const decoded = decodeToken(token)
 
-    if (error) throw error
+    if (!decoded) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      )
+    }
 
-    return NextResponse.json({ wishlist })
+    // Get user's wishlist items
+    const wishlistItems = await prisma.wishlistItem.findMany({
+      where: { userId: decoded.userId },
+      include: {
+        product: {
+          include: {
+            images: { orderBy: { order: 'asc' }, take: 1 },
+          },
+        },
+      },
+    })
+
+    return NextResponse.json({ wishlistItems })
   } catch (error) {
     console.error('[v0] Error fetching wishlist:', error)
     return NextResponse.json(
@@ -27,34 +45,61 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const { product_id } = await request.json()
+    const decoded = decodeToken(token)
 
-    const { data: item, error } = await supabase
-      .from('wishlist')
-      .insert([{ user_id: user.id, product_id }])
-      .select()
-      .single()
+    if (!decoded) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      )
+    }
 
-    if (error) {
-      if (error.code === '23505') {
+    const { productId } = await request.json()
+
+    if (!productId) {
+      return NextResponse.json(
+        { error: 'Product ID is required' },
+        { status: 400 }
+      )
+    }
+
+    try {
+      const item = await prisma.wishlistItem.create({
+        data: {
+          userId: decoded.userId,
+          productId,
+        },
+        include: {
+          product: {
+            include: {
+              images: { orderBy: { order: 'asc' }, take: 1 },
+            },
+          },
+        },
+      })
+
+      return NextResponse.json({ item }, { status: 201 })
+    } catch (error: any) {
+      if (error.code === 'P2002') {
         return NextResponse.json(
           { error: 'Already in wishlist' },
-          { status: 400 }
+          { status: 409 }
         )
       }
       throw error
     }
-
-    return NextResponse.json({ item }, { status: 201 })
   } catch (error) {
     console.error('[v0] Error adding to wishlist:', error)
     return NextResponse.json(

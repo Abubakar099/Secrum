@@ -1,34 +1,56 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { decodeToken } from '@/lib/auth/jwt'
+import prisma from '@/lib/prisma'
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
-    const { id } = await params
-    const { data: { user } } = await supabase.auth.getUser()
+    // Check authentication
+    const token = request.cookies.get('auth-token')?.value
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
-    const { data: order, error } = await supabase
-      .from('orders')
-      .select('*, order_items(*, products(*))')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .single()
+    const decoded = decodeToken(token)
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Order not found' },
-          { status: 404 }
-        )
-      }
-      throw error
+    if (!decoded) {
+      return NextResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      )
+    }
+
+    const { id } = await params
+
+    // Get order - allow user to view their own order or admin to view any
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: { include: { product: true } },
+        payment: true,
+        shipping: true,
+      },
+    })
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if user owns this order or is admin
+    if (order.userId !== decoded.userId && !decoded.isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      )
     }
 
     return NextResponse.json({ order })
@@ -42,38 +64,47 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
+    // Check admin permission
+    const token = request.cookies.get('auth-token')?.value
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const decoded = decodeToken(token)
+
+    if (!decoded || !decoded.isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check if admin
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData?.is_admin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
     const body = await request.json()
-    const { data: order, error } = await supabase
-      .from('orders')
-      .update(body)
-      .eq('id', id)
-      .select()
-      .single()
 
-    if (error) throw error
+    // Update order status
+    const order = await prisma.order.update({
+      where: { id },
+      data: {
+        status: body.status,
+        paymentStatus: body.paymentStatus,
+        shippingStatus: body.shippingStatus,
+        notes: body.notes,
+      },
+      include: {
+        items: { include: { product: true } },
+        payment: true,
+        shipping: true,
+      },
+    })
 
     return NextResponse.json({ order })
   } catch (error) {

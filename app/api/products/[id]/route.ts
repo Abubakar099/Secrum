@@ -1,56 +1,53 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { decodeToken } from '@/lib/auth/jwt'
+import prisma from '@/lib/prisma'
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
     const { id } = await params
 
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_images(*),
-        product_ingredients(*),
-        product_usage(*),
-        skin_concerns(*),
-        reviews(
-          id,
-          rating,
-          title,
-          content,
-          user_id,
-          created_at,
-          users(first_name)
-        )
-      `)
-      .eq('id', id)
-      .eq('active', true)
-      .single()
+    // Get product with related data
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        images: { orderBy: { order: 'asc' } },
+        reviews: {
+          where: { status: 'approved' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                profileImage: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
 
-    if (productError) {
-      if (productError.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Product not found' },
-          { status: 404 }
-        )
-      }
-      throw productError
+    if (!product || !product.active) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      )
     }
 
-    const { data: inventory } = await supabase
-      .from('inventory')
-      .select('quantity')
-      .eq('product_id', id)
-      .single()
+    // Calculate average rating
+    const avgRating =
+      product.reviews.length > 0
+        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+        : 0
 
     return NextResponse.json({
       product: {
         ...product,
-        inventory: inventory?.quantity || 0,
+        rating: parseFloat(avgRating.toFixed(1)),
+        reviewCount: product.reviews.length,
       },
     })
   } catch (error) {
@@ -63,37 +60,51 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
+    // Check admin permission
+    const token = request.cookies.get('auth-token')?.value
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const decoded = decodeToken(token)
+
+    if (!decoded || !decoded.isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData?.is_admin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
     const body = await request.json()
-    const { data: product, error } = await supabase
-      .from('products')
-      .update(body)
-      .eq('id', id)
-      .select()
-      .single()
 
-    if (error) throw error
+    // Update product
+    const product = await prisma.product.update({
+      where: { id },
+      data: {
+        name: body.name,
+        slug: body.slug,
+        description: body.description,
+        tagline: body.tagline,
+        price: body.price,
+        originalPrice: body.originalPrice,
+        stock: body.stock,
+        category: body.category,
+        featured: body.featured,
+        active: body.active !== undefined ? body.active : true,
+      },
+      include: {
+        images: true,
+      },
+    })
 
     return NextResponse.json({ product })
   } catch (error) {
@@ -106,36 +117,41 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient()
+    // Check admin permission
+    const token = request.cookies.get('auth-token')?.value
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const decoded = decodeToken(token)
+
+    if (!decoded || !decoded.isAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden - Admin access required' },
+        { status: 403 }
+      )
+    }
+
     const { id } = await params
-    const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    // Soft delete by marking as inactive
+    await prisma.product.update({
+      where: { id },
+      data: { active: false },
+    })
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!userData?.is_admin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
-    const { error } = await supabase
-      .from('products')
-      .update({ active: false })
-      .eq('id', id)
-
-    if (error) throw error
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      { message: 'Product deleted successfully' },
+      { status: 200 }
+    )
   } catch (error) {
     console.error('[v0] Error deleting product:', error)
     return NextResponse.json(
