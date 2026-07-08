@@ -1,13 +1,15 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
-import { X, Trash2, ShoppingBag, CreditCard, ChevronRight, Sparkles, CheckCircle } from "lucide-react"
+import { X, Trash2, ShoppingBag, CreditCard, ChevronRight, Sparkles, CheckCircle, AlertCircle, Loader } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useCartStore } from "@/store/cart-store"
+import Link from "next/link"
 
-type CheckoutStep = "review" | "shipping" | "payment" | "completed"
+type CheckoutStep = "review" | "shipping" | "payment-method" | "payment" | "completed"
+type PaymentMethod = "jazz_cash" | "cod"
 
 export default function CartDrawer() {
   const isOpen = useCartStore((s) => s.isCartOpen)
@@ -18,11 +20,14 @@ export default function CartDrawer() {
   const onClearCart = useCartStore((s) => s.clearCart)
 
   const [step, setStep] = useState<CheckoutStep>("review")
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [shippingForm, setShippingForm] = useState({
     fullName: "",
     email: "",
+    phone: "",
     address: "",
     city: "",
+    province: "",
     zip: "",
   })
   const [paymentForm, setPaymentForm] = useState({
@@ -32,6 +37,13 @@ export default function CartDrawer() {
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [orderId, setOrderId] = useState("")
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false)
+  const [orderError, setOrderError] = useState("")
+
+  // Hydrate cart from localStorage on mount
+  useEffect(() => {
+    useCartStore.persist.rehydrate()
+  }, [])
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0)
   const shipping = subtotal > 150 || subtotal === 0 ? 0 : 12
@@ -50,13 +62,40 @@ export default function CartDrawer() {
     if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const validatePhone = (phone: string) => {
+    // Pakistani format: +92XXXXXXXXXX or 0XXXXXXXXX
+    const phoneRegex = /^(\+92|0)[0-9]{9,10}$/
+    return phoneRegex.test(phone.replace(/\s+/g, ""))
+  }
+
   const validateShipping = () => {
     const errors: Record<string, string> = {}
-    if (!shippingForm.fullName.trim()) errors.fullName = "Required"
-    if (!shippingForm.email.trim() || !shippingForm.email.includes("@")) errors.email = "Valid email is required"
-    if (!shippingForm.address.trim()) errors.address = "Required"
-    if (!shippingForm.city.trim()) errors.city = "Required"
-    if (!shippingForm.zip.trim()) errors.zip = "Required"
+    if (!shippingForm.fullName.trim() || shippingForm.fullName.trim().length < 3) {
+      errors.fullName = "Name must be at least 3 characters"
+    }
+    if (!shippingForm.email.trim()) {
+      errors.email = "Email is required"
+    } else if (!validateEmail(shippingForm.email)) {
+      errors.email = "Enter a valid email address"
+    }
+    if (!shippingForm.phone.trim()) {
+      errors.phone = "Phone is required"
+    } else if (!validatePhone(shippingForm.phone)) {
+      errors.phone = "Enter Pakistani phone number (+92 or 0)"
+    }
+    if (!shippingForm.address.trim() || shippingForm.address.trim().length < 5) {
+      errors.address = "Enter valid street address"
+    }
+    if (!shippingForm.city.trim()) errors.city = "City is required"
+    if (!shippingForm.province.trim()) errors.province = "Province is required"
+    if (!shippingForm.zip.trim() || shippingForm.zip.trim().length < 3) {
+      errors.zip = "Enter valid postal code"
+    }
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -75,24 +114,79 @@ export default function CartDrawer() {
     setStep("shipping")
   }
 
-  const proceedToPayment = () => {
-    if (validateShipping()) setStep("payment")
+  const proceedToPaymentMethod = () => {
+    if (validateShipping()) setStep("payment-method")
   }
 
-  const completeCheckout = () => {
-    if (validatePayment()) {
-      const generatedCode = "SR-" + Math.floor(100000 + Math.random() * 900000)
-      setOrderId(generatedCode)
+  const proceedToPaymentForm = () => {
+    if (!paymentMethod) {
+      setFormErrors({ paymentMethod: "Please select a payment method" })
+      return
+    }
+    if (paymentMethod === "jazz_cash") {
+      setStep("payment")
+    } else {
+      // For COD, skip card form and go directly to complete
+      completeCheckout()
+    }
+  }
+
+  const completeCheckout = async () => {
+    if (paymentMethod === "jazz_cash" && !validatePayment()) return
+
+    setIsCreatingOrder(true)
+    setOrderError("")
+
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cartItems.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+          subtotal,
+          shippingCost: shipping,
+          tax,
+          paymentMethod,
+          shippingInfo: {
+            name: shippingForm.fullName,
+            email: shippingForm.email,
+            phone: shippingForm.phone,
+            address: shippingForm.address,
+            city: shippingForm.city,
+            province: shippingForm.province,
+            postalCode: shippingForm.zip,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to create order")
+      }
+
+      const { order } = await response.json()
+      setOrderId(order.id)
       setStep("completed")
+      onClearCart()
+    } catch (error) {
+      console.error("[v0] Order creation error:", error)
+      setOrderError(error instanceof Error ? error.message : "Failed to create order")
+      setIsCreatingOrder(false)
     }
   }
 
   const resetAll = () => {
     onClearCart()
     setStep("review")
-    setShippingForm({ fullName: "", email: "", address: "", city: "", zip: "" })
+    setPaymentMethod(null)
+    setShippingForm({ fullName: "", email: "", phone: "", address: "", city: "", province: "", zip: "" })
     setPaymentForm({ cardNum: "", cardExpiry: "", cardCvc: "" })
     setFormErrors({})
+    setOrderError("")
     onClose()
   }
 
@@ -123,6 +217,7 @@ export default function CartDrawer() {
                 <h2 className="font-serif text-xl font-normal tracking-wide text-[#222222]">
                   {step === "review" && "Your Botanical Selection"}
                   {step === "shipping" && "Atelier Shipping"}
+                  {step === "payment-method" && "Payment Method"}
                   {step === "payment" && "Apothecary Payment"}
                   {step === "completed" && "Ritual Acknowledged"}
                 </h2>
@@ -143,7 +238,7 @@ export default function CartDrawer() {
                 <ChevronRight className="w-3 h-3 opacity-35" />
                 <span className={step === "shipping" ? "text-[#222222]" : "opacity-50"}>02. SHIPPING</span>
                 <ChevronRight className="w-3 h-3 opacity-35" />
-                <span className={step === "payment" ? "text-[#222222]" : "opacity-50"}>03. VERIFY</span>
+                <span className={["payment-method", "payment"].includes(step) ? "text-[#222222]" : "opacity-50"}>03. PAYMENT</span>
               </div>
             )}
 
@@ -277,6 +372,21 @@ export default function CartDrawer() {
 
                     <div>
                       <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                        PHONE NUMBER
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={shippingForm.phone}
+                        onChange={handleInputChange}
+                        placeholder="+92 300 1234567"
+                        className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                      />
+                      {formErrors.phone && <p className="text-red-500 text-[10px] mt-1">{formErrors.phone}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
                         STREET ADDRESS
                       </label>
                       <input
@@ -300,7 +410,7 @@ export default function CartDrawer() {
                           name="city"
                           value={shippingForm.city}
                           onChange={handleInputChange}
-                          placeholder="Geneva"
+                          placeholder="Karachi"
                           className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                         />
                         {formErrors.city && <p className="text-red-500 text-[10px] mt-1">{formErrors.city}</p>}
@@ -308,19 +418,89 @@ export default function CartDrawer() {
 
                       <div>
                         <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                          POST CODE / ZIP
+                          PROVINCE
                         </label>
                         <input
                           type="text"
-                          name="zip"
-                          value={shippingForm.zip}
+                          name="province"
+                          value={shippingForm.province}
                           onChange={handleInputChange}
-                          placeholder="CH-1201"
+                          placeholder="Sindh"
                           className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                         />
-                        {formErrors.zip && <p className="text-red-500 text-[10px] mt-1">{formErrors.zip}</p>}
+                        {formErrors.province && <p className="text-red-500 text-[10px] mt-1">{formErrors.province}</p>}
                       </div>
                     </div>
+
+                    <div>
+                      <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                        POST CODE / ZIP
+                      </label>
+                      <input
+                        type="text"
+                        name="zip"
+                        value={shippingForm.zip}
+                        onChange={handleInputChange}
+                        placeholder="75500"
+                        className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                      />
+                      {formErrors.zip && <p className="text-red-500 text-[10px] mt-1">{formErrors.zip}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === "payment-method" && (
+                <div className="space-y-6 text-left">
+                  <p className="text-xs text-[#4a4a4a] font-light leading-relaxed italic mb-4">
+                    Select your preferred payment method to proceed with this botanical order.
+                  </p>
+
+                  {orderError && (
+                    <div className="bg-red-50 border border-red-300 rounded-sm p-3 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-red-700">{orderError}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <label className="flex items-center p-4 border border-[#e8e2d9] rounded-sm cursor-pointer hover:bg-[#e8e2d9]/20 transition-colors"
+                      onClick={() => {
+                        setPaymentMethod("jazz_cash")
+                        setFormErrors({})
+                      }}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="jazz_cash"
+                        checked={paymentMethod === "jazz_cash"}
+                        onChange={() => {}}
+                        className="w-4 h-4 mr-3 cursor-pointer"
+                      />
+                      <div className="flex-grow">
+                        <p className="text-xs font-semibold text-[#222222]">Jazz Cash / Card Payment</p>
+                        <p className="text-[10px] text-[#4a4a4a] mt-0.5">Quick payment via Jazz Cash or credit card</p>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center p-4 border border-[#e8e2d9] rounded-sm cursor-pointer hover:bg-[#e8e2d9]/20 transition-colors"
+                      onClick={() => {
+                        setPaymentMethod("cod")
+                        setFormErrors({})
+                      }}>
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="cod"
+                        checked={paymentMethod === "cod"}
+                        onChange={() => {}}
+                        className="w-4 h-4 mr-3 cursor-pointer"
+                      />
+                      <div className="flex-grow">
+                        <p className="text-xs font-semibold text-[#222222]">Cash on Delivery</p>
+                        <p className="text-[10px] text-[#4a4a4a] mt-0.5">Pay when your order arrives at your door</p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               )}
@@ -427,6 +607,13 @@ export default function CartDrawer() {
                       <span className="font-mono text-xs">{orderId}</span>
                     </div>
 
+                    <div className="text-[10.5px] text-[#4a4a4a] bg-amber-50 border border-amber-200 rounded-xs p-2">
+                      <p className="font-semibold text-amber-900 mb-1">Payment Method: {paymentMethod === "cod" ? "Cash on Delivery" : "Jazz Cash"}</p>
+                      {paymentMethod === "cod" && (
+                        <p className="text-[9px] leading-relaxed">Pay the driver when your order arrives. Keep this reference number for verification.</p>
+                      )}
+                    </div>
+
                     <div className="space-y-2">
                       {cartItems.map((item) => (
                         <div key={item.product.id} className="flex justify-between text-xs text-[#222222]">
@@ -454,12 +641,22 @@ export default function CartDrawer() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={resetAll}
-                    className="mt-8 w-full py-4 bg-[#222222] hover:bg-[#4a4a4a] text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 cursor-pointer"
-                  >
-                    Return to Atelier
-                  </button>
+                  <div className="space-y-2 mt-6">
+                    {orderId && (
+                      <Link
+                        href={`/orders/${orderId}`}
+                        className="block w-full py-4 bg-[#222222] hover:bg-[#4a4a4a] text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 text-center cursor-pointer"
+                      >
+                        View Order Details
+                      </Link>
+                    )}
+                    <button
+                      onClick={resetAll}
+                      className="w-full py-4 border border-[#222222] hover:bg-[#e8e2d9]/50 text-[#222222] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 cursor-pointer"
+                    >
+                      Return to Atelier
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -515,7 +712,7 @@ export default function CartDrawer() {
                         BACK TO BAG
                       </button>
                       <button
-                        onClick={proceedToPayment}
+                        onClick={proceedToPaymentMethod}
                         className="py-4 bg-[#222222] hover:bg-[#4a4a4a] text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 cursor-pointer"
                       >
                         CONTINUE
@@ -523,7 +720,7 @@ export default function CartDrawer() {
                     </div>
                   )}
 
-                  {step === "payment" && (
+                  {step === "payment-method" && (
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setStep("shipping")}
@@ -532,11 +729,44 @@ export default function CartDrawer() {
                         BACK
                       </button>
                       <button
+                        onClick={proceedToPaymentForm}
+                        disabled={!paymentMethod || isCreatingOrder}
+                        className="py-4 bg-[#222222] hover:bg-[#4a4a4a] disabled:bg-[#4a4a4a]/50 disabled:cursor-not-allowed text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 flex items-center justify-center space-x-1 cursor-pointer"
+                      >
+                        {isCreatingOrder ? (
+                          <>
+                            <Loader className="w-3 h-3 animate-spin" />
+                            <span>PROCESSING</span>
+                          </>
+                        ) : (
+                          <span>CONTINUE</span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {step === "payment" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setStep("payment-method")}
+                        className="py-4 border border-[#222222] text-[#222222] hover:bg-[#e8e2d9]/50 text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 cursor-pointer"
+                      >
+                        BACK
+                      </button>
+                      <button
                         onClick={completeCheckout}
-                        className="py-4 bg-[#222222] hover:bg-[#4a4a4a] text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 flex items-center justify-center space-x-1 cursor-pointer"
+                        disabled={isCreatingOrder}
+                        className="py-4 bg-[#222222] hover:bg-[#4a4a4a] disabled:bg-[#4a4a4a]/50 disabled:cursor-not-allowed text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 flex items-center justify-center space-x-1 cursor-pointer"
                         id="authorize-payment-btn"
                       >
-                        <span>AUTHORIZE</span>
+                        {isCreatingOrder ? (
+                          <>
+                            <Loader className="w-3 h-3 animate-spin" />
+                            <span>PROCESSING</span>
+                          </>
+                        ) : (
+                          <span>AUTHORIZE</span>
+                        )}
                       </button>
                     </div>
                   )}

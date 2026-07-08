@@ -97,6 +97,56 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Server-side validation for shipping info
+    const phoneRegex = /^(\+92|0)[0-9]{9,10}$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    const validationErrors: Record<string, string> = {}
+
+    if (!shippingInfo.name || shippingInfo.name.trim().length < 3) {
+      validationErrors.name = 'Name must be at least 3 characters'
+    }
+
+    if (!shippingInfo.email || !emailRegex.test(shippingInfo.email)) {
+      validationErrors.email = 'Valid email is required'
+    }
+
+    if (!shippingInfo.phone || !phoneRegex.test(shippingInfo.phone.replace(/\s+/g, ''))) {
+      validationErrors.phone = 'Valid phone number is required'
+    }
+
+    if (!shippingInfo.address || shippingInfo.address.trim().length < 5) {
+      validationErrors.address = 'Valid street address is required'
+    }
+
+    if (!shippingInfo.city) {
+      validationErrors.city = 'City is required'
+    }
+
+    if (!shippingInfo.province) {
+      validationErrors.province = 'Province is required'
+    }
+
+    if (!shippingInfo.postalCode || shippingInfo.postalCode.trim().length < 3) {
+      validationErrors.postalCode = 'Valid postal code is required'
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationErrors },
+        { status: 400 }
+      )
+    }
+
+    // Server-side delivery charge validation
+    const expectedShipping = subtotal > 150 || subtotal === 0 ? 0 : 12
+    if (shippingCost !== expectedShipping) {
+      return NextResponse.json(
+        { error: 'Invalid shipping cost calculated' },
+        { status: 400 }
+      )
+    }
+
     // Calculate total
     const total = subtotal + shippingCost + tax
 
