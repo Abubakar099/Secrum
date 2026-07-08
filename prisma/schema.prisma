@@ -92,6 +92,8 @@ model Order {
   tax             Float     @default(0)
   total           Float
   notes           String?
+  isDuplicate     Boolean   @default(false)
+  duplicateOrderId String?   // Reference to original order if this is a duplicate
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -100,6 +102,10 @@ model Order {
   items           OrderItem[]
   payment         Payment?
   shipping        ShippingInfo?
+  originalOrder   Order?    @relation("OrderDuplicates", fields: [duplicateOrderId], references: [id])
+  duplicates      Order[]   @relation("OrderDuplicates")
+
+  @@index([userId])
 }
 
 model OrderItem {

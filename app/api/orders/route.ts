@@ -150,6 +150,39 @@ export async function POST(request: NextRequest) {
     // Calculate total
     const total = subtotal + shippingCost + tax
 
+    // Duplicate detection: Check for similar orders in the last 30 minutes
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
+    const productIds = items.map((item: any) => item.productId).sort()
+    
+    const recentOrdersWithSameProducts = await prisma.order.findMany({
+      where: {
+        userId: decoded.userId,
+        createdAt: { gte: thirtyMinutesAgo },
+        status: { in: ['pending', 'confirmed'] },
+      },
+      include: {
+        items: {
+          select: { productId: true },
+        },
+      },
+    })
+
+    let isDuplicate = false
+    let duplicateOrderId: string | null = null
+
+    // Check if any recent order has the exact same products
+    for (const recentOrder of recentOrdersWithSameProducts) {
+      const recentProductIds = recentOrder.items
+        .map((item) => item.productId)
+        .sort()
+      
+      if (JSON.stringify(productIds) === JSON.stringify(recentProductIds)) {
+        isDuplicate = true
+        duplicateOrderId = recentOrder.id
+        break
+      }
+    }
+
     // Generate unique order number
     const orderNumber = `SECRUM-${Date.now()}`
 
@@ -166,6 +199,8 @@ export async function POST(request: NextRequest) {
         shippingCost,
         tax,
         total,
+        isDuplicate,
+        duplicateOrderId,
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,
@@ -210,7 +245,11 @@ export async function POST(request: NextRequest) {
       await sendPaymentNotificationEmail(user.email, paymentMethod, total, order.id)
     }
 
-    return NextResponse.json({ order }, { status: 201 })
+    return NextResponse.json({ 
+      order,
+      isDuplicate,
+      duplicateOrderId,
+    }, { status: 201 })
   } catch (error) {
     console.error('[v0] Error creating order:', error)
     return NextResponse.json(

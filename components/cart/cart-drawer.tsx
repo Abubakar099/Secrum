@@ -39,6 +39,8 @@ export default function CartDrawer() {
   const [orderId, setOrderId] = useState("")
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
   const [orderError, setOrderError] = useState("")
+  const [possibleDuplicate, setPossibleDuplicate] = useState<{ orderNumber: string; orderId: string } | null>(null)
+  const [showDuplicateConfirm, setShowDuplicateConfirm] = useState(false)
 
   // Hydrate cart from localStorage on mount
   useEffect(() => {
@@ -168,14 +170,48 @@ export default function CartDrawer() {
         throw new Error(error.error || "Failed to create order")
       }
 
-      const { order } = await response.json()
+      const { order, isDuplicate, duplicateOrderId } = await response.json()
+      
+      // Check for duplicate order
+      if (isDuplicate && duplicateOrderId) {
+        setIsCreatingOrder(false)
+        setPossibleDuplicate({
+          orderNumber: order.orderNumber,
+          orderId: order.id,
+        })
+        setShowDuplicateConfirm(true)
+        return
+      }
+
       setOrderId(order.id)
       setStep("completed")
       onClearCart()
+      setIsCreatingOrder(false)
     } catch (error) {
       console.error("[v0] Order creation error:", error)
       setOrderError(error instanceof Error ? error.message : "Failed to create order")
       setIsCreatingOrder(false)
+    }
+  }
+
+  const handleDuplicateConfirm = () => {
+    if (possibleDuplicate) {
+      setOrderId(possibleDuplicate.orderId)
+      setStep("completed")
+      onClearCart()
+      setShowDuplicateConfirm(false)
+      setPossibleDuplicate(null)
+    }
+  }
+
+  const handleDuplicateCancel = () => {
+    setShowDuplicateConfirm(false)
+    setPossibleDuplicate(null)
+    // The order was already created, so just go to completed
+    if (possibleDuplicate) {
+      setOrderId(possibleDuplicate.orderId)
+      setStep("completed")
+      onClearCart()
     }
   }
 
@@ -776,6 +812,49 @@ export default function CartDrawer() {
           </motion.div>
         </>
       )}
+
+      {/* Duplicate Confirmation Modal */}
+      <AnimatePresence>
+        {showDuplicateConfirm && possibleDuplicate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+            onClick={() => handleDuplicateCancel()}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <h3 className="font-semibold text-lg text-[#222222]">Possible Duplicate Order</h3>
+              </div>
+              <p className="text-sm text-[#4a4a4a] mb-6 leading-relaxed">
+                We noticed you recently placed a similar order. Did you mean to place a new order? You can proceed or go back to review your cart.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={handleDuplicateConfirm}
+                  className="w-full py-3 bg-[#222222] hover:bg-[#4a4a4a] text-white text-sm font-semibold rounded-sm transition-colors"
+                >
+                  Yes, Place New Order
+                </button>
+                <button
+                  onClick={handleDuplicateCancel}
+                  className="w-full py-3 border border-[#222222] text-[#222222] hover:bg-[#e8e2d9]/30 text-sm font-semibold rounded-sm transition-colors"
+                >
+                  Go Back
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   )
 }
