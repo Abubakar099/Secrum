@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decodeToken } from '@/lib/auth/jwt'
-import { sendOrderConfirmation, sendPaymentNotificationEmail } from '@/lib/email/service'
+import { sendOrderConfirmationEmail } from '@/lib/email/send-email'
 import prisma from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
@@ -183,12 +183,35 @@ export async function POST(request: NextRequest) {
     // Send confirmation email
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { email: true },
+      select: { email: true, name: true },
     })
 
     if (user?.email) {
-      await sendOrderConfirmation(user.email, orderNumber, total)
-      await sendPaymentNotificationEmail(user.email, paymentMethod, total, order.id)
+      try {
+        await sendOrderConfirmationEmail(user.email, {
+          orderNumber,
+          customerName: user.name || "Valued Customer",
+          items: order.items.map((item: any) => ({
+            productName: item.product.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          subtotal,
+          shippingCost: shipping,
+          tax,
+          total,
+          shippingAddress: {
+            address: shippingInfo.address,
+            city: shippingInfo.city,
+            postalCode: shippingInfo.postalCode,
+          },
+          paymentMethod,
+        })
+        console.log("[v0] Order confirmation email sent to:", user.email)
+      } catch (emailError) {
+        console.error("[v0] Failed to send order confirmation email:", emailError)
+        // Don't fail the order creation if email fails
+      }
     }
 
     return NextResponse.json({ order }, { status: 201 })
