@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { X, Trash2, ShoppingBag, CreditCard, ChevronRight, Sparkles, CheckCircle } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useCartStore } from "@/store/cart-store"
@@ -10,6 +11,7 @@ import { useCartStore } from "@/store/cart-store"
 type CheckoutStep = "review" | "shipping" | "payment" | "completed"
 
 export default function CartDrawer() {
+  const router = useRouter()
   const isOpen = useCartStore((s) => s.isCartOpen)
   const cartItems = useCartStore((s) => s.cartItems)
   const onClose = useCartStore((s) => s.closeCart)
@@ -18,20 +20,25 @@ export default function CartDrawer() {
   const onClearCart = useCartStore((s) => s.clearCart)
 
   const [step, setStep] = useState<CheckoutStep>("review")
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "card">("cod")
   const [shippingForm, setShippingForm] = useState({
-    fullName: "",
+    name: "",
+    phone: "",
     email: "",
     address: "",
     city: "",
-    zip: "",
+    province: "",
+    postalCode: "",
   })
-  const [paymentForm, setPaymentForm] = useState({
+  const [cardForm, setCardForm] = useState({
     cardNum: "",
     cardExpiry: "",
     cardCvc: "",
   })
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [orderId, setOrderId] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [orderError, setOrderError] = useState("")
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0)
   const shipping = subtotal > 150 || subtotal === 0 ? 0 : 12
@@ -44,28 +51,30 @@ export default function CartDrawer() {
     if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
-  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCardChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setPaymentForm((prev) => ({ ...prev, [name]: value }))
+    setCardForm((prev) => ({ ...prev, [name]: value }))
     if (formErrors[name]) setFormErrors((prev) => ({ ...prev, [name]: "" }))
   }
 
   const validateShipping = () => {
     const errors: Record<string, string> = {}
-    if (!shippingForm.fullName.trim()) errors.fullName = "Required"
+    if (!shippingForm.name.trim()) errors.name = "Required"
+    if (!shippingForm.phone.trim()) errors.phone = "Required"
     if (!shippingForm.email.trim() || !shippingForm.email.includes("@")) errors.email = "Valid email is required"
     if (!shippingForm.address.trim()) errors.address = "Required"
     if (!shippingForm.city.trim()) errors.city = "Required"
-    if (!shippingForm.zip.trim()) errors.zip = "Required"
+    if (!shippingForm.province.trim()) errors.province = "Required"
+    if (!shippingForm.postalCode.trim()) errors.postalCode = "Required"
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
 
-  const validatePayment = () => {
+  const validateCard = () => {
     const errors: Record<string, string> = {}
-    if (!paymentForm.cardNum.trim() || paymentForm.cardNum.length < 12) errors.cardNum = "Enter valid card"
-    if (!paymentForm.cardExpiry.trim()) errors.cardExpiry = "Required"
-    if (!paymentForm.cardCvc.trim() || paymentForm.cardCvc.length < 3) errors.cardCvc = "Enter CVC"
+    if (!cardForm.cardNum.trim() || cardForm.cardNum.length < 12) errors.cardNum = "Enter valid card"
+    if (!cardForm.cardExpiry.trim()) errors.cardExpiry = "Required"
+    if (!cardForm.cardCvc.trim() || cardForm.cardCvc.length < 3) errors.cardCvc = "Enter CVC"
     setFormErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -79,20 +88,64 @@ export default function CartDrawer() {
     if (validateShipping()) setStep("payment")
   }
 
-  const completeCheckout = () => {
-    if (validatePayment()) {
-      const generatedCode = "SR-" + Math.floor(100000 + Math.random() * 900000)
-      setOrderId(generatedCode)
+  const completeCheckout = async () => {
+    setOrderError("")
+    
+    // Validate card if card payment is selected
+    if (paymentMethod === "card" && !validateCard()) return
+    
+    setIsProcessing(true)
+    try {
+      // Create order
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cartItems.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+          subtotal,
+          shippingCost: shipping,
+          tax,
+          paymentMethod,
+          shippingInfo: shippingForm,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        setOrderError(error.error || "Failed to create order")
+        return
+      }
+
+      const data = await response.json()
+      setOrderId(data.order.orderNumber)
       setStep("completed")
+      
+      // Redirect to success page after 2 seconds
+      setTimeout(() => {
+        onClearCart()
+        onClose()
+        router.push(`/order/success?orderId=${data.order.orderNumber}`)
+      }, 2000)
+    } catch (error) {
+      console.error("[v0] Checkout error:", error)
+      setOrderError("An error occurred. Please try again.")
+    } finally {
+      setIsProcessing(false)
     }
   }
 
   const resetAll = () => {
     onClearCart()
     setStep("review")
-    setShippingForm({ fullName: "", email: "", address: "", city: "", zip: "" })
-    setPaymentForm({ cardNum: "", cardExpiry: "", cardCvc: "" })
+    setPaymentMethod("cod")
+    setShippingForm({ name: "", phone: "", email: "", address: "", city: "", province: "", postalCode: "" })
+    setCardForm({ cardNum: "", cardExpiry: "", cardCvc: "" })
     setFormErrors({})
+    setOrderError("")
     onClose()
   }
 
@@ -247,29 +300,44 @@ export default function CartDrawer() {
                   <div className="space-y-5">
                     <div>
                       <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                        RECEIVER FULL NAME
+                        FULL NAME
                       </label>
                       <input
                         type="text"
-                        name="fullName"
-                        value={shippingForm.fullName}
+                        name="name"
+                        value={shippingForm.name}
                         onChange={handleInputChange}
                         placeholder="e.g. Lady Clara Sterling"
                         className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                       />
-                      {formErrors.fullName && <p className="text-red-500 text-[10px] mt-1">{formErrors.fullName}</p>}
+                      {formErrors.name && <p className="text-red-500 text-[10px] mt-1">{formErrors.name}</p>}
                     </div>
 
                     <div>
                       <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                        EMAIL FOR RITUAL CORRESPONDENCE
+                        PHONE NUMBER
+                      </label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={shippingForm.phone}
+                        onChange={handleInputChange}
+                        placeholder="+92 3XX XXX XXXX"
+                        className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                      />
+                      {formErrors.phone && <p className="text-red-500 text-[10px] mt-1">{formErrors.phone}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                        EMAIL
                       </label>
                       <input
                         type="email"
                         name="email"
                         value={shippingForm.email}
                         onChange={handleInputChange}
-                        placeholder="clara@sterling-atelier.com"
+                        placeholder="your@email.com"
                         className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                       />
                       {formErrors.email && <p className="text-red-500 text-[10px] mt-1">{formErrors.email}</p>}
@@ -284,7 +352,7 @@ export default function CartDrawer() {
                         name="address"
                         value={shippingForm.address}
                         onChange={handleInputChange}
-                        placeholder="72 Rue de l'Apotheke"
+                        placeholder="House No., Street"
                         className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                       />
                       {formErrors.address && <p className="text-red-500 text-[10px] mt-1">{formErrors.address}</p>}
@@ -300,7 +368,7 @@ export default function CartDrawer() {
                           name="city"
                           value={shippingForm.city}
                           onChange={handleInputChange}
-                          placeholder="Geneva"
+                          placeholder="Karachi"
                           className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                         />
                         {formErrors.city && <p className="text-red-500 text-[10px] mt-1">{formErrors.city}</p>}
@@ -308,18 +376,33 @@ export default function CartDrawer() {
 
                       <div>
                         <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                          POST CODE / ZIP
+                          PROVINCE
                         </label>
                         <input
                           type="text"
-                          name="zip"
-                          value={shippingForm.zip}
+                          name="province"
+                          value={shippingForm.province}
                           onChange={handleInputChange}
-                          placeholder="CH-1201"
+                          placeholder="Sindh"
                           className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
                         />
-                        {formErrors.zip && <p className="text-red-500 text-[10px] mt-1">{formErrors.zip}</p>}
+                        {formErrors.province && <p className="text-red-500 text-[10px] mt-1">{formErrors.province}</p>}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                        POSTAL CODE
+                      </label>
+                      <input
+                        type="text"
+                        name="postalCode"
+                        value={shippingForm.postalCode}
+                        onChange={handleInputChange}
+                        placeholder="75500"
+                        className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-sans font-light placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                      />
+                      {formErrors.postalCode && <p className="text-red-500 text-[10px] mt-1">{formErrors.postalCode}</p>}
                     </div>
                   </div>
                 </div>
@@ -331,77 +414,113 @@ export default function CartDrawer() {
                     <p className="text-[11px] text-[#4a4a4a] leading-relaxed flex items-start">
                       <Sparkles className="w-3.5 h-3.5 text-[#222222] mr-2 flex-shrink-0 mt-0.5" />
                       <span>
-                        Your shipping is routed to{" "}
-                        <strong>
-                          {shippingForm.city}, {shippingForm.zip}
-                        </strong>
-                        . Next, provide authorization. This is a fully secure, client-side demo sandbox.
+                        Your shipping is routed to <strong>{shippingForm.city}, {shippingForm.postalCode}</strong>. Select your payment method.
                       </span>
                     </p>
                   </div>
 
-                  <div className="space-y-5">
-                    <div>
-                      <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                        DEFERRED OR CARD PLACEMENT
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          name="cardNum"
-                          value={paymentForm.cardNum}
-                          onChange={handlePaymentChange}
-                          placeholder="4111 2222 3333 4444"
-                          maxLength={19}
-                          className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 pl-9 pr-2 text-xs text-[#222222] font-mono placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
-                        />
-                        <CreditCard className="w-4 h-4 text-[#4a4a4a]/60 absolute left-1 top-2.5" />
-                      </div>
-                      {formErrors.cardNum && <p className="text-red-500 text-[10px] mt-1">{formErrors.cardNum}</p>}
+                  {orderError && (
+                    <div className="bg-red-50 border border-red-200 p-3 rounded-sm">
+                      <p className="text-[10px] text-red-700">{orderError}</p>
                     </div>
+                  )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                          EXPIRY DATE
-                        </label>
+                  <div className="space-y-4">
+                    <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-2">
+                      PAYMENT METHOD
+                    </label>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center p-3 border border-[#e8e2d9] rounded-sm cursor-pointer hover:bg-[#e8e2d9]/20 transition-colors" onClick={() => setPaymentMethod("cod")}>
                         <input
-                          type="text"
-                          name="cardExpiry"
-                          value={paymentForm.cardExpiry}
-                          onChange={handlePaymentChange}
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-mono placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                          type="radio"
+                          name="payment"
+                          value="cod"
+                          checked={paymentMethod === "cod"}
+                          onChange={(e) => setPaymentMethod(e.target.value as "cod" | "card")}
+                          className="w-4 h-4 cursor-pointer"
                         />
-                        {formErrors.cardExpiry && (
-                          <p className="text-red-500 text-[10px] mt-1">{formErrors.cardExpiry}</p>
-                        )}
+                        <label className="ml-3 flex-grow cursor-pointer">
+                          <p className="text-xs font-semibold text-[#222222]">Cash on Delivery</p>
+                          <p className="text-[10px] text-[#4a4a4a] font-light">Pay when your order arrives</p>
+                        </label>
                       </div>
 
-                      <div>
-                        <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
-                          SECURE CVC / CODE
-                        </label>
+                      <div className="flex items-center p-3 border border-[#e8e2d9] rounded-sm cursor-pointer hover:bg-[#e8e2d9]/20 transition-colors" onClick={() => setPaymentMethod("card")}>
                         <input
-                          type="password"
-                          name="cardCvc"
-                          value={paymentForm.cardCvc}
-                          onChange={handlePaymentChange}
-                          placeholder="•••"
-                          maxLength={4}
-                          className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-mono placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                          type="radio"
+                          name="payment"
+                          value="card"
+                          checked={paymentMethod === "card"}
+                          onChange={(e) => setPaymentMethod(e.target.value as "cod" | "card")}
+                          className="w-4 h-4 cursor-pointer"
                         />
-                        {formErrors.cardCvc && <p className="text-red-500 text-[10px] mt-1">{formErrors.cardCvc}</p>}
+                        <label className="ml-3 flex-grow cursor-pointer">
+                          <p className="text-xs font-semibold text-[#222222]">Card Payment</p>
+                          <p className="text-[10px] text-[#4a4a4a] font-light">Credit or debit card</p>
+                        </label>
                       </div>
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-[#e8e2d9]/40 text-center">
-                    <p className="text-[10px] text-[#4a4a4a] leading-relaxed">
-                      S E C R U M encrypted. Your bank statement will reflect a luxury botanical order.
-                    </p>
-                  </div>
+                  {paymentMethod === "card" && (
+                    <div className="space-y-5 pt-4 border-t border-[#e8e2d9]">
+                      <div>
+                        <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                          CARD NUMBER
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            name="cardNum"
+                            value={cardForm.cardNum}
+                            onChange={handleCardChange}
+                            placeholder="4111 2222 3333 4444"
+                            maxLength={19}
+                            className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 pl-9 pr-2 text-xs text-[#222222] font-mono placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                          />
+                          <CreditCard className="w-4 h-4 text-[#4a4a4a]/60 absolute left-1 top-2.5" />
+                        </div>
+                        {formErrors.cardNum && <p className="text-red-500 text-[10px] mt-1">{formErrors.cardNum}</p>}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                            EXPIRY DATE
+                          </label>
+                          <input
+                            type="text"
+                            name="cardExpiry"
+                            value={cardForm.cardExpiry}
+                            onChange={handleCardChange}
+                            placeholder="MM/YY"
+                            maxLength={5}
+                            className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-mono placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                          />
+                          {formErrors.cardExpiry && (
+                            <p className="text-red-500 text-[10px] mt-1">{formErrors.cardExpiry}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-sans font-semibold tracking-widest text-[#222222] uppercase mb-1">
+                            CVC
+                          </label>
+                          <input
+                            type="password"
+                            name="cardCvc"
+                            value={cardForm.cardCvc}
+                            onChange={handleCardChange}
+                            placeholder="•••"
+                            maxLength={4}
+                            className="w-full bg-transparent border-b border-[#e8e2d9] focus:border-[#222222] py-2 px-1 text-xs text-[#222222] font-mono placeholder-[#4a4a4a]/40 outline-none transition-colors duration-300"
+                          />
+                          {formErrors.cardCvc && <p className="text-red-500 text-[10px] mt-1">{formErrors.cardCvc}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -527,16 +646,18 @@ export default function CartDrawer() {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setStep("shipping")}
-                        className="py-4 border border-[#222222] text-[#222222] hover:bg-[#e8e2d9]/50 text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 cursor-pointer"
+                        disabled={isProcessing}
+                        className="py-4 border border-[#222222] text-[#222222] hover:bg-[#e8e2d9]/50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 cursor-pointer"
                       >
                         BACK
                       </button>
                       <button
                         onClick={completeCheckout}
-                        className="py-4 bg-[#222222] hover:bg-[#4a4a4a] text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 flex items-center justify-center space-x-1 cursor-pointer"
+                        disabled={isProcessing}
+                        className="py-4 bg-[#222222] hover:bg-[#4a4a4a] disabled:opacity-50 disabled:cursor-not-allowed text-[#f5f5f0] text-xs font-semibold tracking-[0.2em] uppercase rounded-sm transition-all duration-300 flex items-center justify-center space-x-1 cursor-pointer"
                         id="authorize-payment-btn"
                       >
-                        <span>AUTHORIZE</span>
+                        <span>{isProcessing ? "PROCESSING..." : "PLACE ORDER"}</span>
                       </button>
                     </div>
                   )}

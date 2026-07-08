@@ -103,14 +103,45 @@ export async function POST(request: NextRequest) {
     // Generate unique order number
     const orderNumber = `SECRUM-${Date.now()}`
 
+    // Update product stock and validate availability
+    for (const item of items) {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+      })
+
+      if (!product) {
+        return NextResponse.json(
+          { error: `Product not found: ${item.productId}` },
+          { status: 400 }
+        )
+      }
+
+      if (product.stock < item.quantity) {
+        return NextResponse.json(
+          { error: `Insufficient stock for ${product.name}. Available: ${product.stock}` },
+          { status: 400 }
+        )
+      }
+
+      // Deduct stock
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: { stock: { decrement: item.quantity } },
+      })
+    }
+
+    // Determine order status based on payment method
+    const orderStatus = paymentMethod === 'cod' ? 'confirmed' : 'pending'
+    const paymentStatus = paymentMethod === 'cod' ? 'pending' : 'pending'
+
     // Create order with items
     const order = await prisma.order.create({
       data: {
         userId: decoded.userId,
         orderNumber,
-        status: 'pending',
+        status: orderStatus,
         paymentMethod,
-        paymentStatus: 'pending',
+        paymentStatus,
         shippingStatus: 'pending',
         subtotal,
         shippingCost,
@@ -138,7 +169,7 @@ export async function POST(request: NextRequest) {
           create: {
             paymentMethod,
             amount: total,
-            status: 'pending',
+            status: paymentStatus,
           },
         },
       },
