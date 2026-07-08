@@ -208,7 +208,6 @@ npm run db:studio      # Open Prisma Studio UI
 - JWT-based session management
 - Role-based access control (admin/user)
 - Secure password hashing
-
 ### ✅ Product Management
 - Full product CRUD operations
 - Product images with ordering

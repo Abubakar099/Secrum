@@ -9,13 +9,14 @@ const USER_DATA = {
   name: "Sarah Anderson",
   email: "sarah.anderson@email.com",
   address: "72 Rue de l'Apotheke, 1201 Geneva, Switzerland",
-  phone: "+41791234567",
+  phone: "+92 3264338266",
   joinedDate: "2024",
 }
 
 export default function ProfilePage() {
   const whatsappMessage = `Hi, I'd like to know more about Secrum skincare products.`
   const whatsappLink = `https://wa.me/${USER_DATA.phone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMessage)}`
+
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#f5f5f0] to-[#e8e2d9]/20 pt-24 pb-16">

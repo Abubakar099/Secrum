@@ -28,3 +28,16 @@ npm install prisma @prisma/client
 npm install react-hook-form @hookform/resolvers
 
 
+
+url      = env("DATABASE_URL")
+
+
+npx prisma db push 
+npm install @prisma/adapter-pg pg
+  npm audit fix --force
+   npm install -D @types/pg
+   npx prisma generate
+   npx prisma dbpush 
+   npx prisma migrate reset
+   npx prisma migrate dev --name init
+npx prisma studio
