@@ -65,8 +65,20 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Check for products without images and add fallback indicators
+    const productsWithImageStatus = productsWithRating.map((product) => ({
+      ...product,
+      imageStatus: {
+        hasImages: product.images && product.images.length > 0,
+        imageCount: product.images?.length || 0,
+        usingFallback: !product.images || product.images.length === 0,
+      },
+    }))
+
     return NextResponse.json({
-      products: productsWithRating,
+      success: true,
+      message: `Successfully fetched ${productsWithRating.length} products`,
+      products: productsWithImageStatus,
       pagination: {
         page,
         limit,
@@ -76,8 +88,17 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('[v0] Error fetching products:', error)
+    
+    // Provide more specific error messages
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+    
     return NextResponse.json(
-      { error: 'Failed to fetch products' },
+      {
+        success: false,
+        error: 'Failed to fetch products',
+        details: errorMessage,
+        message: 'Unable to load products at this time. Please try again later.',
+      },
       { status: 500 }
     )
   }
@@ -128,6 +149,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate images if provided
+    if (images && Array.isArray(images)) {
+      for (const img of images) {
+        if (!img.imageUrl) {
+          return NextResponse.json(
+            { error: 'All images must have an imageUrl' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // Create product
     const product = await prisma.product.create({
       data: {
@@ -154,11 +187,38 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ product }, { status: 201 })
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Product created successfully with ${product.images?.length || 0} images`,
+        product,
+      },
+      { status: 201 }
+    )
   } catch (error) {
     console.error('[v0] Error creating product:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+    
+    // Handle specific Prisma errors
+    if (errorMessage.includes('Unique constraint failed')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Product slug already exists',
+          message: 'A product with this slug already exists. Please choose a different slug.',
+        },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'Failed to create product' },
+      {
+        success: false,
+        error: 'Failed to create product',
+        details: errorMessage,
+        message: 'Unable to create product. Please check your input and try again.',
+      },
       { status: 500 }
     )
   }
