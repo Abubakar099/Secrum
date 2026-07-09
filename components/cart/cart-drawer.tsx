@@ -166,29 +166,38 @@ export default function CartDrawer() {
         }),
       })
 
-      // Check response status
-      if (!response.ok) {
-        // Try to parse as JSON, fall back to text if it fails
-        let errorMessage = "Failed to create order"
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorData.message || errorMessage
-        } catch (parseError) {
-          // Response is not JSON (likely HTML error page)
-          const text = await response.text()
-          console.error("[v0] API returned non-JSON response:", text.substring(0, 200))
-          errorMessage = `Server error (${response.status}): ${response.statusText || "Unknown error"}`
-        }
-        throw new Error(errorMessage)
+      // Parse response (whether success or error)
+      let responseText = ""
+      let data: any = null
+
+      try {
+        responseText = await response.text()
+      } catch (textError) {
+        console.error("[v0] Failed to read response:", textError)
+        throw new Error("Failed to read server response")
       }
 
-      // Parse successful response
-      let data
-      try {
-        data = await response.json()
-      } catch (parseError) {
-        console.error("[v0] Failed to parse successful response as JSON:", parseError)
-        throw new Error("Invalid server response format")
+      // Try to parse as JSON
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText)
+        } catch (parseError) {
+          console.error("[v0] Failed to parse response as JSON:", parseError)
+          if (!response.ok) {
+            console.error("[v0] API returned non-JSON response:", responseText.substring(0, 200))
+            throw new Error(
+              `Server error (${response.status}): ${response.statusText || "Unable to create order"}`
+            )
+          }
+          throw new Error("Invalid server response format")
+        }
+      }
+
+      // Check response status
+      if (!response.ok) {
+        const errorMessage =
+          data?.error || data?.message || `Server error (${response.status}): ${response.statusText}`
+        throw new Error(errorMessage)
       }
 
       const { order, isDuplicate, duplicateOrderId } = data
@@ -208,6 +217,14 @@ export default function CartDrawer() {
       setStep("completed")
       onClearCart()
       setIsCreatingOrder(false)
+      
+      // Log success for debugging
+      console.log("[v0] Order created successfully:", {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        paymentMethod: order.paymentMethod,
+        total: order.total,
+      })
     } catch (error) {
       console.error("[v0] Order creation error:", error)
       setOrderError(error instanceof Error ? error.message : "Failed to create order. Please try again.")
@@ -667,10 +684,22 @@ export default function CartDrawer() {
                       <span className="font-mono text-xs">{orderId}</span>
                     </div>
 
-                    <div className="text-[10.5px] text-[#4a4a4a] bg-amber-50 border border-amber-200 rounded-xs p-2">
-                      <p className="font-semibold text-amber-900 mb-1">Payment Method: {paymentMethod === "cod" ? "Cash on Delivery" : "Jazz Cash"}</p>
+                    <div className="text-[10.5px] text-[#4a4a4a] bg-amber-50 border border-amber-200 rounded-xs p-3 space-y-2">
+                      <p className="font-semibold text-amber-900">
+                        Payment Method: {paymentMethod === "cod" ? "Cash on Delivery" : "Jazz Cash"}
+                      </p>
                       {paymentMethod === "cod" && (
-                        <p className="text-[9px] leading-relaxed">Pay the driver when your order arrives. Keep this reference number for verification.</p>
+                        <>
+                          <div className="text-[9px] leading-relaxed space-y-1">
+                            <p>✓ Keep the order reference <strong>{orderId}</strong> for driver verification</p>
+                            <p>✓ Have exact cash amount ready for the delivery partner</p>
+                            <p>✓ Expected delivery: 3-5 business days</p>
+                            <p>✓ Track your order via the confirmation email sent to {shippingForm.email}</p>
+                          </div>
+                        </>
+                      )}
+                      {paymentMethod === "jazz_cash" && (
+                        <p className="text-[9px] leading-relaxed">Complete payment via Jazz Cash. Check your SMS for verification link.</p>
                       )}
                     </div>
 

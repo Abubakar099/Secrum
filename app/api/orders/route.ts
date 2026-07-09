@@ -234,15 +234,54 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Send confirmation email
+    // Send comprehensive confirmation email with full order details
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { email: true },
+      select: { email: true, name: true },
     })
 
     if (user?.email) {
-      await sendOrderConfirmation(user.email, orderNumber, total)
-      await sendPaymentNotificationEmail(user.email, paymentMethod, total, order.id)
+      try {
+        // Prepare order data for comprehensive email
+        const orderConfirmationData = {
+          orderNumber,
+          customerName: shippingInfo.name,
+          email: shippingInfo.email,
+          phone: shippingInfo.phone,
+          shippingAddress: {
+            street: shippingInfo.address,
+            city: shippingInfo.city,
+            province: shippingInfo.province,
+            postalCode: shippingInfo.postalCode,
+          },
+          items: order.items.map((item) => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          subtotal,
+          shippingCost,
+          tax,
+          total,
+          paymentMethod,
+          orderDate: new Date().toLocaleDateString('en-PK', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }),
+          estimatedDelivery:
+            paymentMethod === 'cod'
+              ? '3-5 business days'
+              : '2-3 business days after payment verification',
+        }
+
+        await sendOrderConfirmation(user.email, orderNumber, total, orderConfirmationData)
+        await sendPaymentNotificationEmail(user.email, paymentMethod, total, order.id)
+      } catch (emailError) {
+        console.error('[v0] Error sending order confirmation emails:', emailError)
+        // Don't fail the order creation if emails fail
+      }
     }
 
     return NextResponse.json({ 
@@ -252,8 +291,63 @@ export async function POST(request: NextRequest) {
     }, { status: 201 })
   } catch (error) {
     console.error('[v0] Error creating order:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
+    
+    // Provide specific error messages based on the error type
+    if (errorMessage.includes('validation')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          message: 'Please check all required fields and try again.',
+          details: errorMessage,
+        },
+        { status: 400 }
+      )
+    }
+
+    if (errorMessage.includes('stock') || errorMessage.includes('inventory')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Out of stock',
+          message: 'One or more items in your cart are out of stock. Please review your cart.',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (errorMessage.includes('auth') || errorMessage.includes('token')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication failed',
+          message: 'Please log in again and try placing your order.',
+        },
+        { status: 401 }
+      )
+    }
+
+    if (errorMessage.includes('database') || errorMessage.includes('prisma')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database error',
+          message: 'Unable to process your order. Please try again later.',
+        },
+        { status: 500 }
+      )
+    }
+
+    // Generic server error
     return NextResponse.json(
-      { error: 'Failed to create order' },
+      {
+        success: false,
+        error: 'Failed to create order',
+        message: 'An error occurred while processing your order. Please try again.',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
       { status: 500 }
     )
   }
