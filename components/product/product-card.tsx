@@ -4,6 +4,7 @@ import Image from "next/image"
 import { Eye, Plus, Heart } from "lucide-react"
 import { motion } from "motion/react"
 import type { Product } from "@/lib/types"
+import { getProductImageUrl } from "@/lib/image-utils"
 import { useCartStore } from "@/store/cart-store"
 import { useUIStore } from "@/store/ui-store"
 
@@ -50,11 +51,16 @@ export function ProductCard({ product }: ProductCardProps) {
         onClick={() => setSelectedProduct(product)}
       >
         <Image
-          src={product.image || "/placeholder.svg"}
-          alt={product.name}
+          src={getProductImageUrl(product)}
+          alt={product.images?.[0]?.alt || product.name}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover object-center transform transition-transform duration-[1200ms] ease-out group-hover:scale-103"
+          priority={false}
+          loading="lazy"
+          onError={(e) => {
+            console.log("[v0] Image failed to load:", e)
+          }}
         />
 
         {/* Ambient Dark Overlay on hover */}

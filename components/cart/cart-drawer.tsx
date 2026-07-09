@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { X, Trash2, ShoppingBag, CreditCard, ChevronRight, Sparkles, CheckCircle, AlertCircle, Loader } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
+import { getProductImageUrl } from "@/lib/image-utils"
 import { useCartStore } from "@/store/cart-store"
 import Link from "next/link"
 
@@ -304,11 +305,14 @@ export default function CartDrawer() {
                         <div key={item.product.id} className="flex space-x-4 pb-6 border-b border-[#e8e2d9]/60">
                           <div className="relative w-20 h-24 bg-[#e8e2d9]/20 rounded-xs overflow-hidden flex-shrink-0">
                             <Image
-                              src={item.product.image || "/placeholder.svg"}
-                              alt={item.product.name}
+                              src={getProductImageUrl(item.product)}
+                              alt={item.product.images?.[0]?.alt || item.product.name}
                               fill
                               sizes="80px"
                               className="object-cover"
+                              onError={(e) => {
+                                console.log("[v0] Cart image failed to load:", e)
+                              }}
                             />
                           </div>
 

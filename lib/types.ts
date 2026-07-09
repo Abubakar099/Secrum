@@ -9,6 +9,13 @@ export type ProductCategory =
   | "essences"
   | (string & {})
 
+export interface ProductImage {
+  id: string
+  imageUrl: string
+  alt: string
+  displayOrder: number
+}
+
 export interface Product {
   id: string
   number: string
@@ -16,7 +23,8 @@ export interface Product {
   tagline: string
   price: number
   category: ProductCategory
-  image: string
+  image?: string // Deprecated - use images array instead
+  images?: ProductImage[]
   description: string
   ingredients: string[]
   usage: string

@@ -4,6 +4,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { X, Star, Wind, Leaf, Sparkles } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
+import { getProductImageUrl, getProductImages } from "@/lib/image-utils"
 import { useUIStore } from "@/store/ui-store"
 import { useCartStore } from "@/store/cart-store"
 
@@ -68,11 +69,15 @@ export default function ProductDetailModal() {
               <div className="w-full md:w-1/2 bg-[#e8e2d9]/40 relative flex flex-col justify-between overflow-hidden">
                 <div className="aspect-[4/5] w-full relative">
                   <Image
-                    src={selectedProduct.image || "/placeholder.svg"}
-                    alt={selectedProduct.name}
+                    src={getProductImageUrl(selectedProduct)}
+                    alt={selectedProduct.images?.[0]?.alt || selectedProduct.name}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover object-center"
+                    priority={true}
+                    onError={(e) => {
+                      console.log("[v0] Modal image failed to load:", e)
+                    }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#222222]/30 to-transparent pointer-events-none" />
 
