@@ -166,12 +166,32 @@ export default function CartDrawer() {
         }),
       })
 
+      // Check response status
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Failed to create order")
+        // Try to parse as JSON, fall back to text if it fails
+        let errorMessage = "Failed to create order"
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch (parseError) {
+          // Response is not JSON (likely HTML error page)
+          const text = await response.text()
+          console.error("[v0] API returned non-JSON response:", text.substring(0, 200))
+          errorMessage = `Server error (${response.status}): ${response.statusText || "Unknown error"}`
+        }
+        throw new Error(errorMessage)
       }
 
-      const { order, isDuplicate, duplicateOrderId } = await response.json()
+      // Parse successful response
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error("[v0] Failed to parse successful response as JSON:", parseError)
+        throw new Error("Invalid server response format")
+      }
+
+      const { order, isDuplicate, duplicateOrderId } = data
       
       // Check for duplicate order
       if (isDuplicate && duplicateOrderId) {
@@ -190,7 +210,7 @@ export default function CartDrawer() {
       setIsCreatingOrder(false)
     } catch (error) {
       console.error("[v0] Order creation error:", error)
-      setOrderError(error instanceof Error ? error.message : "Failed to create order")
+      setOrderError(error instanceof Error ? error.message : "Failed to create order. Please try again.")
       setIsCreatingOrder(false)
     }
   }
